@@ -1,0 +1,30 @@
+{
+  "name": "profat-client",
+  "version": "1.0.0",
+  "description": "JavaScript client for the Profat analytics API",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "tsdown": "^0.20.3",
+    "typescript": "^5.7.2"
+  }
+}
