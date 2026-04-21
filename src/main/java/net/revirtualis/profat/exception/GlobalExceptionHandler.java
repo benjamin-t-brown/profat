@@ -43,4 +43,13 @@ public class GlobalExceptionHandler {
 				ex.getMessage());
 		return ResponseEntity.badRequest().body(body);
 	}
+
+	@ExceptionHandler(DuplicateServiceNameException.class)
+	public ResponseEntity<ErrorResponse> handleDuplicateServiceName(DuplicateServiceNameException ex) {
+		ErrorResponse body = new ErrorResponse(
+				HttpStatus.CONFLICT.value(),
+				"Conflict",
+				ex.getMessage());
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+	}
 }

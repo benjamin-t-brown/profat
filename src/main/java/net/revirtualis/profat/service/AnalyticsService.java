@@ -16,9 +16,11 @@ public class AnalyticsService {
 	private static final int DEFAULT_DAYS = 30;
 
 	private final EventRepository eventRepository;
+	private final PageVisitActionCatalog pageVisitActionCatalog;
 
-	public AnalyticsService(EventRepository eventRepository) {
+	public AnalyticsService(EventRepository eventRepository, PageVisitActionCatalog pageVisitActionCatalog) {
 		this.eventRepository = eventRepository;
+		this.pageVisitActionCatalog = pageVisitActionCatalog;
 	}
 
 	public AnalyticsSummary getSummary(java.util.UUID serviceId, String fromParam, String toParam) {
@@ -36,7 +38,7 @@ public class AnalyticsService {
 		String fromStr = from.atStartOfDay().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z";
 		String toStr = to.plusDays(1).atStartOfDay().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z";
 
-		List<Object[]> visitsByDay = eventRepository.countPageVisitsByDay(serviceId, fromStr, toStr);
+		List<Object[]> visitsByDay = eventRepository.countPageVisitsByDay(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
 		List<Map<String, Object>> visitsPerDay = visitsByDay.stream()
 				.map(row -> {
 					Map<String, Object> map = new LinkedHashMap<>();
@@ -46,10 +48,19 @@ public class AnalyticsService {
 				})
 				.collect(Collectors.toList());
 
-		List<String> uniqueCountries = eventRepository.findDistinctCountriesForPageVisits(serviceId, fromStr, toStr);
-		long totalPageLoads = eventRepository.countPageVisits(serviceId, fromStr, toStr);
-		long mobile = eventRepository.countPageVisitsMobile(serviceId, fromStr, toStr);
-		long desktop = eventRepository.countPageVisitsDesktop(serviceId, fromStr, toStr);
+		List<String> uniqueCountries = eventRepository.findDistinctCountriesForPageVisits(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
+		List<Object[]> visitsByIpRows = eventRepository.countPageVisitsByPayloadIp(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
+		List<Map<String, Object>> pageVisitsByIp = visitsByIpRows.stream()
+				.map(row -> {
+					Map<String, Object> map = new LinkedHashMap<>();
+					map.put("ip", row[0]);
+					map.put("count", ((Number) row[1]).longValue());
+					return map;
+				})
+				.collect(Collectors.toList());
+		long totalPageLoads = eventRepository.countPageVisits(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
+		long mobile = eventRepository.countPageVisitsMobile(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
+		long desktop = eventRepository.countPageVisitsDesktop(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
 
 		Map<String, Long> pageLoadsByDevice = new LinkedHashMap<>();
 		pageLoadsByDevice.put("mobile", mobile);
@@ -58,6 +69,7 @@ public class AnalyticsService {
 		AnalyticsSummary summary = new AnalyticsSummary();
 		summary.setVisitsPerDay(visitsPerDay);
 		summary.setUniqueCountries(uniqueCountries);
+		summary.setPageVisitsByIp(pageVisitsByIp);
 		summary.setTotalPageLoads(totalPageLoads);
 		summary.setPageLoadsByDevice(pageLoadsByDevice);
 		return summary;

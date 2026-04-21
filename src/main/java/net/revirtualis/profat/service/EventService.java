@@ -19,14 +19,14 @@ import java.util.UUID;
 @Service
 public class EventService {
 
-	private static final String ACTION_PAGE_VISIT = "page_visit";
-
 	private final EventRepository eventRepository;
 	private final ObjectMapper objectMapper;
+	private final PageVisitActionCatalog pageVisitActionCatalog;
 
-	public EventService(EventRepository eventRepository, ObjectMapper objectMapper) {
+	public EventService(EventRepository eventRepository, ObjectMapper objectMapper, PageVisitActionCatalog pageVisitActionCatalog) {
 		this.eventRepository = eventRepository;
 		this.objectMapper = objectMapper;
+		this.pageVisitActionCatalog = pageVisitActionCatalog;
 	}
 
 	@Transactional
@@ -42,7 +42,7 @@ public class EventService {
 		event.setPayload(payloadJson);
 		event.setCreatedAt(createdAt);
 
-		if (ACTION_PAGE_VISIT.equals(request.getAction()) && request.getPayload() != null) {
+		if (pageVisitActionCatalog.isPageVisitLike(request.getAction()) && request.getPayload() != null) {
 			event.setPageUrl(getString(request.getPayload(), "pageUrl"));
 			event.setCountry(getString(request.getPayload(), "country"));
 			event.setIsMobile(getBoolean(request.getPayload(), "isMobile"));

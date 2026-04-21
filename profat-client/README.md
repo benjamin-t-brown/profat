@@ -7,12 +7,12 @@ A small JavaScript/TypeScript client for the [Profat](https://github.com/your-or
 From the repo (no publish required):
 
 ```bash
-cd js-client
+cd profat-client
 npm install
 npm run build
 ```
 
-Or link from the monorepo root: `npm install ./js-client`
+Or link from the monorepo root: `npm install ./profat-client`
 
 ## Development
 
@@ -29,6 +29,7 @@ import { createClient } from "profat-client";
 
 const client = createClient({
   baseUrl: "http://localhost:9002/api/v1",
+  apiKey: "same value as server profat.api-key",
 });
 
 // Create a service (or use an existing service ID)
@@ -71,6 +72,7 @@ Build first (`npm run build`), then copy `dist/index.iife.js` to your project an
 <script>
   const client = window.Profat.createClient({
     baseUrl: "http://localhost:9002/api/v1",
+    apiKey: "same value as server profat.api-key",
   });
   client.logPageVisit("your-service-id", {
     pageUrl: location.pathname,
@@ -95,7 +97,7 @@ import {
 
 ## API
 
-- **createClient(config)** – `{ baseUrl: string }` → `ProfatClient`
+- **createClient(config)** – `{ baseUrl: string; apiKey?: string }` → `ProfatClient` (set `apiKey` when the server uses `profat.api-key`)
 - **client.createService(request)** – `{ name: string }` → `ServiceResponse`
 - **client.listServices()** – → `ServiceResponse[]`
 - **client.logEvent(serviceId, event)** – `{ action, payload? }` → `EventResponse`

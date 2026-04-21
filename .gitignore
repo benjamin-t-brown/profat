@@ -73,3 +73,5 @@ profat-client/npm-debug.log*
 profat-client/yarn-debug.log*
 profat-client/yarn-error.log*
 profat-client/.pnpm-debug.log*
+
+memory

@@ -5,6 +5,11 @@
 export interface ProfatConfig {
   /** Base URL of the Profat API (e.g. `http://localhost:9002/api/v1`) */
   baseUrl: string;
+  /**
+   * When the server is configured with `profat.api-key`, set this to the same value.
+   * Sent as the `X-Profat-Key` header on every request.
+   */
+  apiKey?: string;
 }
 
 /** Registered service (app) returned by the API */
@@ -70,6 +75,8 @@ export interface AnalyticsSummaryOptions {
 export interface AnalyticsSummary {
   visitsPerDay: Array<{ date: string; count: number }>;
   uniqueCountries: string[];
+  /** Page-visit counts grouped by `payload.ip` (only events whose JSON payload contains a non-blank `ip`). */
+  pageVisitsByIp: Array<{ ip: string; count: number }>;
   totalPageLoads: number;
   pageLoadsByDevice: { mobile: number; desktop: number };
 }

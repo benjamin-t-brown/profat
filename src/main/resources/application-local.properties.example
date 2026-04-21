@@ -1,0 +1,20 @@
+# Copy this file to application-local.properties (gitignored) and run with Spring profile "local".
+#
+# API key (local dev only — do not commit application-local.properties). Same value must be sent as header
+# X-Profat-Key from clients and in the bundled API tester.
+# profat.api-key=your-secret-here
+#
+# Examples:
+#   ./mvnw -Pdev spring-boot:run
+#   ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+#   java -jar app.jar --spring.profiles.active=local
+# IDE: VM option -Dspring.profiles.active=local or env SPRING_PROFILES_ACTIVE=local
+
+# Optional: serve static sites under /proxy/{route}/...; HTML GETs log a page-visit event server-side.
+# Register a service first (POST /api/v1/services), then set service-id to that UUID.
+profat.staticSites[0].route=revirtualis-net
+profat.staticSites[0].staticFiles=C:\\progs\\revirtualis-net\\dist
+profat.staticSites[0].analyticsName=page_visit
+profat.staticSites[0].serviceId=76465e97-6c9d-4364-9110-0b39637cbeaf
+# Optional: also serve this site at http://127.0.0.1:9876/ (must differ from server.port; binds to loopback only).
+# profat.staticSites[0].localhostPort=9876

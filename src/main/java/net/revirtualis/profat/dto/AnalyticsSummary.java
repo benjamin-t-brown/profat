@@ -7,6 +7,7 @@ public class AnalyticsSummary {
 
 	private List<Map<String, Object>> visitsPerDay;
 	private List<String> uniqueCountries;
+	private List<Map<String, Object>> pageVisitsByIp;
 	private long totalPageLoads;
 	private Map<String, Long> pageLoadsByDevice;
 
@@ -27,6 +28,14 @@ public class AnalyticsSummary {
 
 	public void setUniqueCountries(List<String> uniqueCountries) {
 		this.uniqueCountries = uniqueCountries;
+	}
+
+	public List<Map<String, Object>> getPageVisitsByIp() {
+		return pageVisitsByIp;
+	}
+
+	public void setPageVisitsByIp(List<Map<String, Object>> pageVisitsByIp) {
+		this.pageVisitsByIp = pageVisitsByIp;
 	}
 
 	public long getTotalPageLoads() {

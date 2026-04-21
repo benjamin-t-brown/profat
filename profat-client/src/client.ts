@@ -13,9 +13,11 @@ import type {
 
 export class ProfatClient {
   private readonly baseUrl: string;
+  private readonly apiKey: string | undefined;
 
   constructor(config: ProfatConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
+    this.apiKey = config.apiKey;
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -24,6 +26,9 @@ export class ProfatClient {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(this.apiKey !== undefined && this.apiKey !== ''
+          ? { 'X-Profat-Key': this.apiKey }
+          : {}),
         ...options.headers,
       },
     });

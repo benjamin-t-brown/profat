@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profat API Tester</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --border: #2d3a4d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --success: #3fb950;
+      --danger: #f85149;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1.5rem;
+      line-height: 1.5;
+    }
+    h1 { font-size: 1.5rem; margin: 0 0 0.5rem; color: var(--text); }
+    .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .base-url {
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .base-url label { color: var(--muted); white-space: nowrap; }
+    .base-url input {
+      flex: 1;
+      max-width: 28rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: ui-monospace, monospace;
+    }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    section h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .method { font-family: ui-monospace, monospace; font-weight: 600; }
+    .method.get { color: var(--success); }
+    .method.post { color: var(--accent); }
+    .method.delete { color: var(--danger); }
+    .path { font-family: ui-monospace, monospace; color: var(--muted); }
+    .form-row { margin-bottom: 0.75rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+    .form-row label { min-width: 5rem; color: var(--muted); }
+    input[type="text"], input[type="number"], select, textarea {
+      padding: 0.4rem 0.6rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: ui-monospace, monospace;
+    }
+    select { min-width: 12rem; }
+    textarea { width: 100%; min-height: 80px; resize: vertical; }
+    button {
+      padding: 0.5rem 1rem;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .response {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 20rem;
+      overflow: auto;
+    }
+    .response.success { border-left: 3px solid var(--success); }
+    .response.error { border-left: 3px solid var(--danger); color: #ff7b72; }
+    .response.empty { color: var(--muted); }
+    .service-list { margin-bottom: 0.5rem; }
+    .service-list option { font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Profat API Tester</h1>
+  <p class="subtitle">Test all REST endpoints from the browser.</p>
+
+  <div class="base-url">
+    <label for="baseUrl">API base URL</label>
+    <input type="text" id="baseUrl" value="" placeholder="http://localhost:9002/api/v1">
+    <label for="apiKey">API key</label>
+    <input type="password" id="apiKey" value="" placeholder="matches profat.api-key / PROFAT_API_KEY" autocomplete="off" style="max-width: 18rem;">
+  </div>
+
+  <!-- List / Create services -->
+  <section>
+    <h2><span class="method get">GET</span> <span class="path">/api/v1/services</span> — List services</h2>
+    <button type="button" id="btnListServices">List services</button>
+    <div id="resListServices" class="response empty">Click to fetch.</div>
+  </section>
+
+  <section>
+    <h2><span class="method post">POST</span> <span class="path">/api/v1/services</span> — Register service</h2>
+    <div class="form-row">
+      <label for="serviceName">name</label>
+      <input type="text" id="serviceName" placeholder="My App" style="width: 14rem;">
+      <button type="button" id="btnCreateService">Create</button>
+    </div>
+    <div id="resCreateService" class="response empty">Response will appear here.</div>
+  </section>
+
+  <section>
+    <h2><span class="method delete">DELETE</span> <span class="path">/api/v1/services/{id}</span> — Delete service</h2>
+    <p style="margin: 0 0 0.75rem; color: var(--muted); font-size: 0.9rem;">Removes the service and all of its events.</p>
+    <div class="form-row">
+      <label for="deleteServiceId">service</label>
+      <select id="deleteServiceId" class="service-list"><option value="">— fetch services first —</option></select>
+      <button type="button" id="btnDeleteService" style="background: var(--danger); color: var(--text);">Delete</button>
+    </div>
+    <div id="resDeleteService" class="response empty">Response will appear here.</div>
+  </section>
+
+  <!-- Events (require serviceId) -->
+  <section>
+    <h2><span class="method post">POST</span> <span class="path">/api/v1/services/{id}/events</span> — Log event</h2>
+    <div class="form-row">
+      <label for="eventServiceId">service</label>
+      <select id="eventServiceId" class="service-list"><option value="">— fetch services first —</option></select>
+    </div>
+    <div class="form-row">
+      <label for="eventAction">action</label>
+      <input type="text" id="eventAction" value="page_visit" placeholder="e.g. page_visit" style="width: 12rem;">
+    </div>
+    <div class="form-row">
+      <label for="eventPayload">payload (JSON)</label>
+    </div>
+    <textarea id="eventPayload" placeholder='{"pageUrl": "/", "isMobile": false}'></textarea>
+    <div class="form-row" style="margin-top: 0.5rem;">
+      <button type="button" id="btnPresetPageVisit">Use page_visit preset</button>
+      <button type="button" id="btnLogEvent">Log event</button>
+    </div>
+    <div id="resLogEvent" class="response empty">Response here.</div>
+  </section>
+
+  <section>
+    <h2><span class="method get">GET</span> <span class="path">/api/v1/services/{id}/events</span> — List events</h2>
+    <div class="form-row">
+      <label for="eventsServiceId">service</label>
+      <select id="eventsServiceId" class="service-list"><option value="">— fetch services first —</option></select>
+      <label for="eventsSearch">search</label>
+      <input type="text" id="eventsSearch" placeholder="optional" style="width: 8rem;">
+      <label for="eventsPage">page</label>
+      <input type="number" id="eventsPage" value="0" min="0" style="width: 4rem;">
+      <label for="eventsSize">size</label>
+      <input type="number" id="eventsSize" value="20" min="1" max="100" style="width: 4rem;">
+      <button type="button" id="btnListEvents">List events</button>
+    </div>
+    <div id="resListEvents" class="response empty">Response here.</div>
+  </section>
+
+  <section>
+    <h2><span class="method get">GET</span> <span class="path">/api/v1/services/{id}/actions</span> — List actions</h2>
+    <div class="form-row">
+      <label for="actionsServiceId">service</label>
+      <select id="actionsServiceId" class="service-list"><option value="">— fetch services first —</option></select>
+      <button type="button" id="btnListActions">List actions</button>
+    </div>
+    <div id="resListActions" class="response empty">Response here.</div>
+  </section>
+
+  <section>
+    <h2><span class="method get">GET</span> <span class="path">/api/v1/services/{id}/analytics/summary</span> — Analytics summary</h2>
+    <div class="form-row">
+      <label for="summaryServiceId">service</label>
+      <select id="summaryServiceId" class="service-list"><option value="">— fetch services first —</option></select>
+      <label for="summaryFrom">from (date)</label>
+      <input type="text" id="summaryFrom" placeholder="YYYY-MM-DD" style="width: 8rem;">
+      <label for="summaryTo">to (date)</label>
+      <input type="text" id="summaryTo" placeholder="YYYY-MM-DD" style="width: 8rem;">
+      <button type="button" id="btnSummary">Get summary</button>
+    </div>
+    <div id="resSummary" class="response empty">Response here.</div>
+  </section>
+
+  <script>
+    (function () {
+      const API_KEY_STORAGE = 'profat.apiTester.apiKey';
+      const baseUrlInput = document.getElementById('baseUrl');
+      const apiKeyInput = document.getElementById('apiKey');
+      if (!baseUrlInput.value) {
+        baseUrlInput.value = location.origin + '/api/v1';
+      }
+      try {
+        const savedKey = localStorage.getItem(API_KEY_STORAGE);
+        if (savedKey !== null) {
+          apiKeyInput.value = savedKey;
+        }
+      } catch (_) {}
+      apiKeyInput.addEventListener('input', function () {
+        try {
+          localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value);
+        } catch (_) {}
+      });
+
+      function baseUrl() {
+        return baseUrlInput.value.replace(/\/$/, '');
+      }
+
+      function apiHeaders(contentTypeJson) {
+        const h = {};
+        if (contentTypeJson) h['Content-Type'] = 'application/json';
+        const k = apiKeyInput.value.trim();
+        if (k) h['X-Profat-Key'] = k;
+        return h;
+      }
+
+      function setResponse(elId, data, isError) {
+        const el = document.getElementById(elId);
+        el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        el.className = 'response ' + (isError ? 'error' : 'success');
+      }
+
+      function clearResponse(elId) {
+        const el = document.getElementById(elId);
+        el.textContent = '…';
+        el.className = 'response';
+      }
+
+      async function request(method, path, body) {
+        const url = path.startsWith('http') ? path : baseUrl() + path;
+        const opt = { method, headers: apiHeaders(body !== undefined) };
+        if (body !== undefined) opt.body = JSON.stringify(body);
+        const res = await fetch(url, opt);
+        const text = await res.text();
+        let json = text;
+        try {
+          json = JSON.parse(text);
+        } catch (_) {}
+        return { ok: res.ok, status: res.status, data: json };
+      }
+
+      function fillServiceSelects(services) {
+        const options = services.map(s => {
+          const o = document.createElement('option');
+          o.value = s.id;
+          o.textContent = s.name + ' (' + s.id + ')';
+          return o;
+        });
+        const selects = document.querySelectorAll('.service-list');
+        selects.forEach(sel => {
+          const first = sel.options[0];
+          sel.innerHTML = '';
+          if (first && first.value === '') {
+            sel.appendChild(document.createElement('option')).value = '';
+            sel.options[0].textContent = '— select service —';
+          }
+          options.forEach(o => sel.appendChild(o.cloneNode(true)));
+        });
+      }
+
+      document.getElementById('btnListServices').addEventListener('click', async () => {
+        const resEl = document.getElementById('resListServices');
+        clearResponse('resListServices');
+        const r = await request('GET', '/services');
+        if (r.ok) {
+          setResponse('resListServices', r.data, false);
+          fillServiceSelects(r.data);
+        } else {
+          setResponse('resListServices', r.data, true);
+        }
+      });
+
+      document.getElementById('btnCreateService').addEventListener('click', async () => {
+        const name = document.getElementById('serviceName').value.trim();
+        if (!name) return;
+        const resEl = document.getElementById('resCreateService');
+        clearResponse('resCreateService');
+        const r = await request('POST', '/services', { name });
+        if (r.ok) {
+          setResponse('resCreateService', r.data, false);
+          document.getElementById('btnListServices').click();
+        } else {
+          setResponse('resCreateService', r.data, true);
+        }
+      });
+
+      document.getElementById('btnDeleteService').addEventListener('click', async () => {
+        const serviceId = document.getElementById('deleteServiceId').value;
+        if (!serviceId) {
+          setResponse('resDeleteService', 'Select a service first.', true);
+          return;
+        }
+        if (!confirm('Delete this service and all its events? This cannot be undone.')) {
+          return;
+        }
+        clearResponse('resDeleteService');
+        const r = await request('DELETE', '/services/' + serviceId);
+        if (r.ok) {
+          const msg = r.status === 204 ? 'Deleted (204 No Content).' : r.data;
+          setResponse('resDeleteService', msg, false);
+          document.getElementById('btnListServices').click();
+        } else {
+          setResponse('resDeleteService', r.data, true);
+        }
+      });
+
+      document.getElementById('btnLogEvent').addEventListener('click', async () => {
+        const serviceId = document.getElementById('eventServiceId').value;
+        if (!serviceId) { setResponse('resLogEvent', 'Select a service first.', true); return; }
+        const action = document.getElementById('eventAction').value.trim();
+        if (!action) { setResponse('resLogEvent', 'Action is required.', true); return; }
+        let payload = null;
+        const raw = document.getElementById('eventPayload').value.trim();
+        if (raw) {
+          try {
+            payload = JSON.parse(raw);
+          } catch (e) {
+            setResponse('resLogEvent', 'Invalid JSON in payload: ' + e.message, true);
+            return;
+          }
+        }
+        clearResponse('resLogEvent');
+        const r = await request('POST', '/services/' + serviceId + '/events', { action, payload });
+        if (r.ok) setResponse('resLogEvent', r.data, false);
+        else setResponse('resLogEvent', r.data, true);
+      });
+
+      document.getElementById('btnPresetPageVisit').addEventListener('click', () => {
+        document.getElementById('eventAction').value = 'page_visit';
+        document.getElementById('eventPayload').value = JSON.stringify({
+          pageUrl: '/',
+          country: null,
+          isMobile: /Mobi|Android/i.test(navigator.userAgent)
+        }, null, 2);
+      });
+
+      document.getElementById('btnListEvents').addEventListener('click', async () => {
+        const serviceId = document.getElementById('eventsServiceId').value;
+        if (!serviceId) { setResponse('resListEvents', 'Select a service first.', true); return; }
+        const search = document.getElementById('eventsSearch').value.trim();
+        const page = document.getElementById('eventsPage').value;
+        const size = document.getElementById('eventsSize').value;
+        let path = '/services/' + serviceId + '/events?page=' + page + '&size=' + size;
+        if (search) path += '&search=' + encodeURIComponent(search);
+        clearResponse('resListEvents');
+        const r = await request('GET', path);
+        if (r.ok) setResponse('resListEvents', r.data, false);
+        else setResponse('resListEvents', r.data, true);
+      });
+
+      document.getElementById('btnListActions').addEventListener('click', async () => {
+        const serviceId = document.getElementById('actionsServiceId').value;
+        if (!serviceId) { setResponse('resListActions', 'Select a service first.', true); return; }
+        clearResponse('resListActions');
+        const r = await request('GET', '/services/' + serviceId + '/actions');
+        if (r.ok) setResponse('resListActions', r.data, false);
+        else setResponse('resListActions', r.data, true);
+      });
+
+      document.getElementById('btnSummary').addEventListener('click', async () => {
+        const serviceId = document.getElementById('summaryServiceId').value;
+        if (!serviceId) { setResponse('resSummary', 'Select a service first.', true); return; }
+        let path = '/services/' + serviceId + '/analytics/summary';
+        const from = document.getElementById('summaryFrom').value.trim();
+        const to = document.getElementById('summaryTo').value.trim();
+        const params = [];
+        if (from) params.push('from=' + encodeURIComponent(from));
+        if (to) params.push('to=' + encodeURIComponent(to));
+        if (params.length) path += '?' + params.join('&');
+        clearResponse('resSummary');
+        const r = await request('GET', path);
+        if (r.ok) setResponse('resSummary', r.data, false);
+        else setResponse('resSummary', r.data, true);
+      });
+    })();
+  </script>
+</body>
+</html>
