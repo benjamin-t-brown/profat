@@ -129,7 +129,7 @@ class ProfatApiIntegrationTest {
 				.getContentAsString();
 		String serviceId = objectMapper.readTree(serviceJson).get("id").asText();
 
-		// POST page_visit event
+		// POST page_visit events for two IPs to test >10/day filtering
 		EventCreateRequest pageVisit = new EventCreateRequest();
 		pageVisit.setAction("page_visit");
 		Map<String, Object> visitPayload = new LinkedHashMap<>();
@@ -137,15 +137,25 @@ class ProfatApiIntegrationTest {
 		visitPayload.put("country", "US");
 		visitPayload.put("isMobile", false);
 		visitPayload.put("userAgent", "Mozilla/5.0");
-		visitPayload.put("ip", "203.0.113.10");
 		pageVisit.setPayload(visitPayload);
-		mvc.perform(post("/api/v1/services/" + serviceId + "/events")
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(objectMapper.writeValueAsString(pageVisit))
-						.with(apiKey()))
-				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.action").value("page_visit"))
-				.andExpect(jsonPath("$.createdAt").exists());
+		for (int i = 0; i < 11; i++) {
+			mvc.perform(post("/api/v1/services/" + serviceId + "/events")
+							.header("X-Forwarded-For", "203.0.113.10")
+							.contentType(MediaType.APPLICATION_JSON)
+							.content(objectMapper.writeValueAsString(pageVisit))
+							.with(apiKey()))
+					.andExpect(status().isCreated())
+					.andExpect(jsonPath("$.action").value("page_visit"))
+					.andExpect(jsonPath("$.createdAt").exists());
+		}
+		for (int i = 0; i < 10; i++) {
+			mvc.perform(post("/api/v1/services/" + serviceId + "/events")
+							.header("X-Forwarded-For", "203.0.113.11")
+							.contentType(MediaType.APPLICATION_JSON)
+							.content(objectMapper.writeValueAsString(pageVisit))
+							.with(apiKey()))
+					.andExpect(status().isCreated());
+		}
 
 		// POST custom action
 		EventCreateRequest signup = new EventCreateRequest();
@@ -162,8 +172,8 @@ class ProfatApiIntegrationTest {
 		mvc.perform(get("/api/v1/services/" + serviceId + "/events").param("page", "0").param("size", "10")
 						.with(apiKey()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.content", hasSize(2)))
-				.andExpect(jsonPath("$.totalElements").value(2));
+				.andExpect(jsonPath("$.content", hasSize(10)))
+				.andExpect(jsonPath("$.totalElements").value(22));
 
 		// GET events with search
 		mvc.perform(get("/api/v1/services/" + serviceId + "/events").param("search", "pro")
@@ -182,10 +192,17 @@ class ProfatApiIntegrationTest {
 						.param("from", today).param("to", today)
 						.with(apiKey()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.totalPageLoads").value(1))
+				.andExpect(jsonPath("$.totalPageLoads").value(21))
 				.andExpect(jsonPath("$.uniqueCountries", hasItem("US")))
-				.andExpect(jsonPath("$.pageVisitsByIp[0].ip").value("203.0.113.10"))
-				.andExpect(jsonPath("$.pageVisitsByIp[0].count").value(1))
+				.andExpect(jsonPath("$.visitsPerHour").isArray())
+				.andExpect(jsonPath("$.visitsPerHour[0].hour", containsString("T")))
+				.andExpect(jsonPath("$.visitsPerHour[0].hour", endsWith(":00:00Z")))
+				.andExpect(jsonPath("$.visitsPerHour[0].count", greaterThanOrEqualTo(1)))
+				.andExpect(jsonPath("$.ipVisitsPerDay").isArray())
+				.andExpect(jsonPath("$.ipVisitsPerDay[0].ips[0].ip").value("203.0.113.10"))
+				.andExpect(jsonPath("$.ipVisitsPerDay[0].ips[0].count").value(11))
+				.andExpect(jsonPath("$.ipVisitsPerDay[0].ips[*].ip", not(hasItem("203.0.113.11"))))
+				.andExpect(jsonPath("$.pageVisitsByIp").doesNotExist())
 				.andExpect(jsonPath("$.pageLoadsByDevice.mobile").exists())
 				.andExpect(jsonPath("$.pageLoadsByDevice.desktop").exists())
 				.andExpect(jsonPath("$.visitsPerDay").isArray());

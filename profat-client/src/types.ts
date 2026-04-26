@@ -74,9 +74,10 @@ export interface AnalyticsSummaryOptions {
 /** Analytics summary response */
 export interface AnalyticsSummary {
   visitsPerDay: Array<{ date: string; count: number }>;
+  visitsPerHour: Array<{ hour: string; count: number }>;
   uniqueCountries: string[];
-  /** Page-visit counts grouped by `payload.ip` (only events whose JSON payload contains a non-blank `ip`). */
-  pageVisitsByIp: Array<{ ip: string; count: number }>;
+  /** Per-day IP counts, filtered to IPs with more than 10 visits for that day. */
+  ipVisitsPerDay: Array<{ date: string; ips: Array<{ ip: string; count: number }> }>;
   totalPageLoads: number;
   pageLoadsByDevice: { mobile: number; desktop: number };
 }

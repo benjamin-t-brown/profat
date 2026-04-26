@@ -6,8 +6,9 @@ import java.util.Map;
 public class AnalyticsSummary {
 
 	private List<Map<String, Object>> visitsPerDay;
+	private List<Map<String, Object>> visitsPerHour;
 	private List<String> uniqueCountries;
-	private List<Map<String, Object>> pageVisitsByIp;
+	private List<Map<String, Object>> ipVisitsPerDay;
 	private long totalPageLoads;
 	private Map<String, Long> pageLoadsByDevice;
 
@@ -30,12 +31,20 @@ public class AnalyticsSummary {
 		this.uniqueCountries = uniqueCountries;
 	}
 
-	public List<Map<String, Object>> getPageVisitsByIp() {
-		return pageVisitsByIp;
+	public List<Map<String, Object>> getVisitsPerHour() {
+		return visitsPerHour;
 	}
 
-	public void setPageVisitsByIp(List<Map<String, Object>> pageVisitsByIp) {
-		this.pageVisitsByIp = pageVisitsByIp;
+	public void setVisitsPerHour(List<Map<String, Object>> visitsPerHour) {
+		this.visitsPerHour = visitsPerHour;
+	}
+
+	public List<Map<String, Object>> getIpVisitsPerDay() {
+		return ipVisitsPerDay;
+	}
+
+	public void setIpVisitsPerDay(List<Map<String, Object>> ipVisitsPerDay) {
+		this.ipVisitsPerDay = ipVisitsPerDay;
 	}
 
 	public long getTotalPageLoads() {

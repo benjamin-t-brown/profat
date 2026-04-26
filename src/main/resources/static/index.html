@@ -103,6 +103,42 @@
     .response.empty { color: var(--muted); }
     .service-list { margin-bottom: 0.5rem; }
     .service-list option { font-family: ui-monospace, monospace; }
+    .chart-wrap {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .chart-title {
+      margin: 0 0 0.5rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .summary-chart {
+      width: 100%;
+      height: 220px;
+      display: block;
+    }
+    .summary-mini-chart {
+      width: 100%;
+      height: 160px;
+      display: block;
+      margin-top: 0.75rem;
+      border-top: 1px solid var(--border);
+      padding-top: 0.5rem;
+    }
+    .chart-empty {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin: 0.25rem 0 0;
+    }
+    .chart-legend {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin: 0.35rem 0 0;
+      font-family: ui-monospace, monospace;
+    }
   </style>
 </head>
 <body>
@@ -203,6 +239,22 @@
       <input type="text" id="summaryTo" placeholder="YYYY-MM-DD" style="width: 8rem;">
       <button type="button" id="btnSummary">Get summary</button>
     </div>
+    <div class="chart-wrap">
+      <p class="chart-title">Visits chart (hourly when available)</p>
+      <svg id="summaryChart" class="summary-chart" viewBox="0 0 760 220" preserveAspectRatio="none" aria-label="Analytics summary chart"></svg>
+      <p id="summaryChartEmpty" class="chart-empty">Request summary data to render chart.</p>
+      <div class="form-row" style="margin-top: 0.75rem; margin-bottom: 0.4rem;">
+        <label for="summaryIpChartMode">ip chart mode</label>
+        <select id="summaryIpChartMode" style="min-width: 18rem;">
+          <option value="aggregate">Top IPs (aggregated across range)</option>
+          <option value="perDay">Top IP per day</option>
+        </select>
+      </div>
+      <p class="chart-title">Top IPs (from per-day thresholded IP data)</p>
+      <svg id="summaryIpChart" class="summary-mini-chart" viewBox="0 0 760 160" preserveAspectRatio="none" aria-label="Analytics IP chart"></svg>
+      <p id="summaryIpChartEmpty" class="chart-empty">IP chart will appear when `ipVisitsPerDay` has data.</p>
+      <p id="summaryIpChartLegend" class="chart-legend">Legend: bars = IP, x-axis = IP address, value label = total visits.</p>
+    </div>
     <div id="resSummary" class="response empty">Response here.</div>
   </section>
 
@@ -211,6 +263,8 @@
       const API_KEY_STORAGE = 'profat.apiTester.apiKey';
       const baseUrlInput = document.getElementById('baseUrl');
       const apiKeyInput = document.getElementById('apiKey');
+      const summaryIpChartMode = document.getElementById('summaryIpChartMode');
+      let latestSummaryData = null;
       if (!baseUrlInput.value) {
         baseUrlInput.value = location.origin + '/api/v1';
       }
@@ -248,6 +302,182 @@
         const el = document.getElementById(elId);
         el.textContent = '…';
         el.className = 'response';
+      }
+
+      function clearSummaryChart(message) {
+        const svg = document.getElementById('summaryChart');
+        const empty = document.getElementById('summaryChartEmpty');
+        svg.innerHTML = '';
+        empty.textContent = message || 'No chart data available.';
+
+        const ipSvg = document.getElementById('summaryIpChart');
+        const ipEmpty = document.getElementById('summaryIpChartEmpty');
+        const ipLegend = document.getElementById('summaryIpChartLegend');
+        ipSvg.innerHTML = '';
+        ipEmpty.textContent = 'IP chart will appear when `ipVisitsPerDay` has data.';
+        ipLegend.textContent = 'Legend: bars = IP, x-axis = IP address, value label = total visits.';
+      }
+
+      function renderSummaryChart(summary) {
+        const svg = document.getElementById('summaryChart');
+        const empty = document.getElementById('summaryChartEmpty');
+        const hours = Array.isArray(summary.visitsPerHour) ? summary.visitsPerHour : [];
+        const days = Array.isArray(summary.visitsPerDay) ? summary.visitsPerDay : [];
+
+        const points = hours.length
+          ? hours.map(item => ({ label: item.hour, count: Number(item.count || 0) }))
+          : days.map(item => ({ label: item.date, count: Number(item.count || 0) }));
+
+        if (!points.length) {
+          clearSummaryChart('No visits found for selected range.');
+          return;
+        }
+
+        const width = 760;
+        const height = 220;
+        const padding = { top: 16, right: 10, bottom: 28, left: 44 };
+        const plotW = width - padding.left - padding.right;
+        const plotH = height - padding.top - padding.bottom;
+        const maxY = Math.max(...points.map(p => p.count), 1);
+        const stepX = points.length > 1 ? plotW / (points.length - 1) : 0;
+
+        const coords = points.map((p, i) => {
+          const x = padding.left + i * stepX;
+          const y = padding.top + (plotH - (p.count / maxY) * plotH);
+          return { x, y, count: p.count, label: p.label };
+        });
+
+        const lineD = coords.map((c, i) => (i ? 'L' : 'M') + c.x + ' ' + c.y).join(' ');
+
+        svg.innerHTML = '';
+        const ns = 'http://www.w3.org/2000/svg';
+        function add(tag, attrs, text) {
+          const el = document.createElementNS(ns, tag);
+          Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, String(v)));
+          if (text !== undefined) el.textContent = text;
+          svg.appendChild(el);
+          return el;
+        }
+
+        add('line', { x1: padding.left, y1: height - padding.bottom, x2: width - padding.right, y2: height - padding.bottom, stroke: '#2d3a4d', 'stroke-width': 1 });
+        add('line', { x1: padding.left, y1: padding.top, x2: padding.left, y2: height - padding.bottom, stroke: '#2d3a4d', 'stroke-width': 1 });
+        add('path', { d: lineD, fill: 'none', stroke: '#58a6ff', 'stroke-width': 2.5 });
+
+        const ticks = [0, Math.round(maxY / 2), maxY];
+        ticks.forEach(value => {
+          const y = padding.top + (plotH - (value / maxY) * plotH);
+          add('line', { x1: padding.left, y1: y, x2: width - padding.right, y2: y, stroke: '#2d3a4d', 'stroke-width': 1, 'stroke-dasharray': '2 4' });
+          add('text', { x: padding.left - 8, y: y + 4, 'text-anchor': 'end', fill: '#8b949e', 'font-size': 11 }, String(value));
+        });
+
+        const tickIdx = points.length <= 6
+          ? points.map((_, i) => i)
+          : [0, Math.floor(points.length / 2), points.length - 1];
+        tickIdx.forEach(i => {
+          const c = coords[i];
+          add('text', { x: c.x, y: height - 8, 'text-anchor': 'middle', fill: '#8b949e', 'font-size': 11 }, c.label);
+        });
+
+        coords.forEach(c => {
+          add('circle', { cx: c.x, cy: c.y, r: 3, fill: '#3fb950' });
+        });
+
+        empty.textContent = hours.length
+          ? 'Rendering hourly visits from analytics summary.'
+          : 'Hourly data missing; showing daily visits instead.';
+
+        renderSummaryIpChart(summary);
+      }
+
+      function renderSummaryIpChart(summary) {
+        const svg = document.getElementById('summaryIpChart');
+        const empty = document.getElementById('summaryIpChartEmpty');
+        const legend = document.getElementById('summaryIpChartLegend');
+        const perDay = Array.isArray(summary.ipVisitsPerDay) ? summary.ipVisitsPerDay : [];
+        const mode = summaryIpChartMode.value;
+
+        let bars = [];
+        if (mode === 'perDay') {
+          bars = perDay
+            .map(dayEntry => {
+              const date = String(dayEntry.date || '');
+              const ips = Array.isArray(dayEntry.ips) ? dayEntry.ips : [];
+              const sorted = ips
+                .map(ipEntry => ({ ip: String(ipEntry.ip || '').trim(), count: Number(ipEntry.count || 0) }))
+                .filter(item => item.ip && item.count > 0)
+                .sort((a, b) => b.count - a.count || a.ip.localeCompare(b.ip));
+              if (!sorted.length || !date) return null;
+              return { key: date, label: date, subLabel: sorted[0].ip, count: sorted[0].count };
+            })
+            .filter(Boolean)
+            .slice(0, 10);
+        } else {
+          const ipTotals = new Map();
+          perDay.forEach(dayEntry => {
+            const ips = Array.isArray(dayEntry.ips) ? dayEntry.ips : [];
+            ips.forEach(ipEntry => {
+              const ip = String(ipEntry.ip || '').trim();
+              const count = Number(ipEntry.count || 0);
+              if (!ip || count <= 0) return;
+              ipTotals.set(ip, (ipTotals.get(ip) || 0) + count);
+            });
+          });
+          bars = Array.from(ipTotals.entries())
+            .map(([ip, count]) => ({ key: ip, label: ip, count }))
+            .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+            .slice(0, 8);
+        }
+
+        if (!bars.length) {
+          svg.innerHTML = '';
+          empty.textContent = mode === 'perDay'
+            ? 'No per-day IP data met the >10/day threshold in this range.'
+            : 'No IPs met the >10/day threshold in this range.';
+          legend.textContent = mode === 'perDay'
+            ? 'Legend: bars = date, top label = visits, bottom labels = date then top IP for that day.'
+            : 'Legend: bars = IP, x-axis = IP address, value label = total visits.';
+          return;
+        }
+
+        const width = 760;
+        const height = 160;
+        const padding = { top: 10, right: 10, bottom: 30, left: 44 };
+        const plotW = width - padding.left - padding.right;
+        const plotH = height - padding.top - padding.bottom;
+        const maxY = Math.max(...bars.map(b => b.count), 1);
+        const slotW = plotW / bars.length;
+        const barW = Math.max(14, slotW * 0.62);
+        const ns = 'http://www.w3.org/2000/svg';
+
+        svg.innerHTML = '';
+        function add(tag, attrs, text) {
+          const el = document.createElementNS(ns, tag);
+          Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, String(v)));
+          if (text !== undefined) el.textContent = text;
+          svg.appendChild(el);
+          return el;
+        }
+
+        add('line', { x1: padding.left, y1: height - padding.bottom, x2: width - padding.right, y2: height - padding.bottom, stroke: '#2d3a4d', 'stroke-width': 1 });
+
+        bars.forEach((bar, i) => {
+          const x = padding.left + i * slotW + (slotW - barW) / 2;
+          const h = (bar.count / maxY) * plotH;
+          const y = padding.top + (plotH - h);
+          add('rect', { x, y, width: barW, height: h, fill: '#3fb950', rx: 3, ry: 3 });
+          add('text', { x: x + barW / 2, y: y - 4, 'text-anchor': 'middle', fill: '#8b949e', 'font-size': 10 }, String(bar.count));
+          add('text', { x: x + barW / 2, y: height - 18, 'text-anchor': 'middle', fill: '#8b949e', 'font-size': 10 }, bar.label);
+          if (bar.subLabel) {
+            add('text', { x: x + barW / 2, y: height - 6, 'text-anchor': 'middle', fill: '#8b949e', 'font-size': 10 }, bar.subLabel);
+          }
+        });
+
+        empty.textContent = mode === 'perDay'
+          ? 'Showing top thresholded IP for each day.'
+          : 'Top thresholded IPs aggregated across selected dates.';
+        legend.textContent = mode === 'perDay'
+          ? 'Legend: bars = date, top label = visits, bottom labels = date then top IP for that day.'
+          : 'Legend: bars = IP, x-axis = IP address, value label = total visits.';
       }
 
       async function request(method, path, body) {
@@ -392,9 +622,25 @@
         if (to) params.push('to=' + encodeURIComponent(to));
         if (params.length) path += '?' + params.join('&');
         clearResponse('resSummary');
+        clearSummaryChart('Loading chart...');
         const r = await request('GET', path);
-        if (r.ok) setResponse('resSummary', r.data, false);
-        else setResponse('resSummary', r.data, true);
+        if (r.ok) {
+          setResponse('resSummary', r.data, false);
+          latestSummaryData = r.data;
+          renderSummaryChart(r.data);
+        } else {
+          setResponse('resSummary', r.data, true);
+          latestSummaryData = null;
+          clearSummaryChart('Unable to render chart from error response.');
+        }
+      });
+
+      summaryIpChartMode.addEventListener('change', function () {
+        if (latestSummaryData) {
+          renderSummaryIpChart(latestSummaryData);
+        } else {
+          clearSummaryChart('Request summary data to render chart.');
+        }
       });
     })();
   </script>

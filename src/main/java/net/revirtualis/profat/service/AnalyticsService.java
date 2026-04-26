@@ -47,14 +47,34 @@ public class AnalyticsService {
 					return map;
 				})
 				.collect(Collectors.toList());
-
-		List<String> uniqueCountries = eventRepository.findDistinctCountriesForPageVisits(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
-		List<Object[]> visitsByIpRows = eventRepository.countPageVisitsByPayloadIp(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
-		List<Map<String, Object>> pageVisitsByIp = visitsByIpRows.stream()
+		List<Object[]> visitsByHourRows = eventRepository.countPageVisitsByHour(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
+		List<Map<String, Object>> visitsPerHour = visitsByHourRows.stream()
 				.map(row -> {
 					Map<String, Object> map = new LinkedHashMap<>();
-					map.put("ip", row[0]);
+					map.put("hour", normalizeHourBucket((String) row[0]));
 					map.put("count", ((Number) row[1]).longValue());
+					return map;
+				})
+				.collect(Collectors.toList());
+
+		List<String> uniqueCountries = eventRepository.findDistinctCountriesForPageVisits(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
+		List<Object[]> ipVisitsByDayRows = eventRepository.countPageVisitsByDayAndIpOverThreshold(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
+		Map<String, List<Map<String, Object>>> ipsByDay = new LinkedHashMap<>();
+		for (Object[] row : ipVisitsByDayRows) {
+			String day = (String) row[0];
+			String ip = (String) row[1];
+			long count = ((Number) row[2]).longValue();
+
+			Map<String, Object> ipCount = new LinkedHashMap<>();
+			ipCount.put("ip", ip);
+			ipCount.put("count", count);
+			ipsByDay.computeIfAbsent(day, ignored -> new ArrayList<>()).add(ipCount);
+		}
+		List<Map<String, Object>> ipVisitsPerDay = ipsByDay.entrySet().stream()
+				.map(entry -> {
+					Map<String, Object> map = new LinkedHashMap<>();
+					map.put("date", entry.getKey());
+					map.put("ips", entry.getValue());
 					return map;
 				})
 				.collect(Collectors.toList());
@@ -68,10 +88,19 @@ public class AnalyticsService {
 
 		AnalyticsSummary summary = new AnalyticsSummary();
 		summary.setVisitsPerDay(visitsPerDay);
+		summary.setVisitsPerHour(visitsPerHour);
 		summary.setUniqueCountries(uniqueCountries);
-		summary.setPageVisitsByIp(pageVisitsByIp);
+		summary.setIpVisitsPerDay(ipVisitsPerDay);
 		summary.setTotalPageLoads(totalPageLoads);
 		summary.setPageLoadsByDevice(pageLoadsByDevice);
 		return summary;
+	}
+
+	private static String normalizeHourBucket(String rawHourBucket) {
+		String base = rawHourBucket.endsWith("Z") ? rawHourBucket.substring(0, rawHourBucket.length() - 1) : rawHourBucket;
+		if (base.length() > 13) {
+			base = base.substring(0, 13);
+		}
+		return base + ":00:00Z";
 	}
 }
