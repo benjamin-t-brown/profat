@@ -41,6 +41,11 @@ Production builds use `application-prod.properties` when `SPRING_PROFILES_ACTIVE
 ./mvnw spring-boot:run -Dspring.datasource.url=jdbc:sqlite:/your/path/profat.db
 ```
 
+## Backup and restore db
+
+scp -i ~/.ssh/id_rsa admin@<ip>:/home/admin/profat/data/profat.db ./profat.bak.sqlite
+scp -i ~/.ssh/id_rsa ./profat.bak.sqlite admin@<ip>:/home/admin/profat/data/profat.db
+
 ## Running with Docker
 
 Build and run the server in a container with the SQLite database stored on the host:
