@@ -119,7 +119,16 @@ For script-tag usage and full API, see [profat-client/README.md](profat-client/R
 
 ## CORS
 
-If your frontend is served from a different origin than the Profat server, enable CORS on the Spring Boot app for that origin (e.g. via `WebMvcConfigurer` or `@CrossOrigin`).
+When a front end runs on a different origin (e.g. Vite at `http://localhost:5173` calling Profat at `http://localhost:9002`), allow that origin in config:
+
+```properties
+# application-local.properties — exact origin, wildcard port, or any origin
+profat.cors.allowed-origin-patterns[0]=http://localhost:5173
+# profat.cors.allowed-origin-patterns[0]=http://localhost:*
+# profat.cors.allowed-origin-patterns[0]=*
+```
+
+Use `*` only when you are comfortable with any website in the browser calling your API (auth still requires `X-Profat-Key` in production). Prefer explicit origins or same-origin `/api/v1` via nginx in production.
 
 ## License
 

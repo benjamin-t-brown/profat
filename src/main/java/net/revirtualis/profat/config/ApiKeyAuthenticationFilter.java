@@ -32,6 +32,9 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
+		if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+			return true;
+		}
 		String key = profatProperties.getApiKey();
 		if (key == null || key.isBlank()) {
 			return true;

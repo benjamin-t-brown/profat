@@ -22,6 +22,8 @@ public class ProfatProperties {
 	 */
 	private boolean apiKeyRequired = false;
 
+	private Cors cors = new Cors();
+
 	/**
 	 * Static sites served under {@code /proxy/{route}/...} (mount paths, asset URLs, etc. can be handled in nginx).
 	 */
@@ -43,12 +45,42 @@ public class ProfatProperties {
 		this.apiKeyRequired = apiKeyRequired;
 	}
 
+	public Cors getCors() {
+		return cors;
+	}
+
+	public void setCors(Cors cors) {
+		this.cors = cors != null ? cors : new Cors();
+	}
+
+	/** Convenience for CORS config; see {@link Cors#getAllowedOriginPatterns()}. */
+	public List<String> getCorsAllowedOriginPatterns() {
+		return cors.getAllowedOriginPatterns();
+	}
+
 	public List<StaticSite> getStaticSites() {
 		return staticSites;
 	}
 
 	public void setStaticSites(List<StaticSite> staticSites) {
 		this.staticSites = staticSites != null ? staticSites : new ArrayList<>();
+	}
+
+	public static class Cors {
+
+		/**
+		 * Origins allowed for cross-origin REST access (e.g. {@code http://localhost:5173},
+		 * {@code http://localhost:*}, or {@code *} for any origin). When empty, CORS is disabled.
+		 */
+		private List<String> allowedOriginPatterns = new ArrayList<>();
+
+		public List<String> getAllowedOriginPatterns() {
+			return allowedOriginPatterns;
+		}
+
+		public void setAllowedOriginPatterns(List<String> allowedOriginPatterns) {
+			this.allowedOriginPatterns = allowedOriginPatterns != null ? allowedOriginPatterns : new ArrayList<>();
+		}
 	}
 
 	public static class StaticSite {

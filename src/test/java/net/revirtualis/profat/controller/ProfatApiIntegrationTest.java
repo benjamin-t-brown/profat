@@ -60,6 +60,27 @@ class ProfatApiIntegrationTest {
 	private ObjectMapper objectMapper;
 
 	@Test
+	void corsPreflight_wildcardPattern_allowsAnyOrigin() throws Exception {
+		mvc.perform(options("/api/v1/services")
+						.header("Origin", "https://example.com")
+						.header("Access-Control-Request-Method", "GET")
+						.header("Access-Control-Request-Headers", "X-Profat-Key"))
+				.andExpect(status().isOk())
+				.andExpect(header().string("Access-Control-Allow-Origin", "https://example.com"));
+	}
+
+	@Test
+	void corsPreflight_allowsConfiguredOrigin() throws Exception {
+		mvc.perform(options("/api/v1/services")
+						.header("Origin", "http://localhost:5173")
+						.header("Access-Control-Request-Method", "GET")
+						.header("Access-Control-Request-Headers", "X-Profat-Key, Content-Type"))
+				.andExpect(status().isOk())
+				.andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+				.andExpect(header().string("Access-Control-Allow-Methods", containsString("GET")));
+	}
+
+	@Test
 	void apiWithoutKey_returns401() throws Exception {
 		mvc.perform(get("/api/v1/services"))
 				.andExpect(status().isUnauthorized())

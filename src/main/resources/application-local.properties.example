@@ -10,6 +10,9 @@
 #   java -jar app.jar --spring.profiles.active=local
 # IDE: VM option -Dspring.profiles.active=local or env SPRING_PROFILES_ACTIVE=local
 
+# Allow a local Vite (or similar) dev server to call the REST API from the browser.
+profat.cors.allowed-origin-patterns[0]=http://localhost:*
+
 # Optional: serve static sites under /proxy/{route}/...; HTML GETs log a page-visit event server-side.
 # Register a service first (POST /api/v1/services), then set service-id to that UUID.
 profat.staticSites[0].route=revirtualis-net
