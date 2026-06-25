@@ -86,7 +86,7 @@ docker run -p 9002:9002 -e SPRING_DATASOURCE_URL=jdbc:sqlite:/some/path/profat.d
 | POST   | `/api/v1/services/{id}/events` | Log an event (action + payload) |
 | GET    | `/api/v1/services/{id}/events` | List events (paginated, optional search) |
 | GET    | `/api/v1/services/{id}/actions` | List distinct action names |
-| GET    | `/api/v1/services/{id}/analytics/summary` | Analytics summary (visits/day, countries, device breakdown) |
+| GET    | `/api/v1/services/{id}/analytics/summary` | Analytics summary (visits/day, countries, device breakdown, visits by page URL) |
 
 Every event is an **action** with a **payload** (JSON). The predefined action `page_visit` uses a conventional payload (`pageUrl`, `country`, `isMobile`, etc.) and is used for the analytics summary. All timestamps are ISO 8601.
 

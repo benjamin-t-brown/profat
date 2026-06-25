@@ -64,6 +64,9 @@ Desktop.ini
 application-local.properties
 application-local.yml
 
+# profat-analytics (local Vite app, not committed)
+profat-analytics/
+
 # profat-client (Node/TypeScript)
 profat-client/node_modules/
 profat-client/dist/
@@ -75,3 +78,4 @@ profat-client/yarn-error.log*
 profat-client/.pnpm-debug.log*
 
 memory
+*.sqlite

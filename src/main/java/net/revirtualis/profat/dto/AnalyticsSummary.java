@@ -9,6 +9,7 @@ public class AnalyticsSummary {
 	private List<Map<String, Object>> visitsPerHour;
 	private List<String> uniqueCountries;
 	private List<Map<String, Object>> ipVisitsPerDay;
+	private List<Map<String, Object>> visitsByPageUrl;
 	private long totalPageLoads;
 	private Map<String, Long> pageLoadsByDevice;
 
@@ -45,6 +46,14 @@ public class AnalyticsSummary {
 
 	public void setIpVisitsPerDay(List<Map<String, Object>> ipVisitsPerDay) {
 		this.ipVisitsPerDay = ipVisitsPerDay;
+	}
+
+	public List<Map<String, Object>> getVisitsByPageUrl() {
+		return visitsByPageUrl;
+	}
+
+	public void setVisitsByPageUrl(List<Map<String, Object>> visitsByPageUrl) {
+		this.visitsByPageUrl = visitsByPageUrl;
 	}
 
 	public long getTotalPageLoads() {

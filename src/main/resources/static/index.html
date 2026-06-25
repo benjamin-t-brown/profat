@@ -122,7 +122,7 @@
     }
     .summary-mini-chart {
       width: 100%;
-      height: 160px;
+      height: 190px;
       display: block;
       margin-top: 0.75rem;
       border-top: 1px solid var(--border);
@@ -139,6 +139,13 @@
       margin: 0.35rem 0 0;
       font-family: ui-monospace, monospace;
     }
+    #apiKey:-webkit-autofill {
+      animation: profat-autofill-start 0.01s;
+    }
+    @keyframes profat-autofill-start {
+      from { opacity: 1; }
+      to { opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -149,7 +156,7 @@
     <label for="baseUrl">API base URL</label>
     <input type="text" id="baseUrl" value="" placeholder="http://localhost:9002/api/v1">
     <label for="apiKey">API key</label>
-    <input type="password" id="apiKey" value="" placeholder="matches profat.api-key / PROFAT_API_KEY" autocomplete="off" style="max-width: 18rem;">
+    <input type="password" id="apiKey" value="" placeholder="matches profat.api-key / PROFAT_API_KEY" autocomplete="current-password" style="max-width: 18rem;">
   </div>
 
   <!-- List / Create services -->
@@ -251,9 +258,13 @@
         </select>
       </div>
       <p class="chart-title">Top IPs (from per-day thresholded IP data)</p>
-      <svg id="summaryIpChart" class="summary-mini-chart" viewBox="0 0 760 160" preserveAspectRatio="none" aria-label="Analytics IP chart"></svg>
+      <svg id="summaryIpChart" class="summary-mini-chart" viewBox="0 0 760 190" preserveAspectRatio="none" aria-label="Analytics IP chart"></svg>
       <p id="summaryIpChartEmpty" class="chart-empty">IP chart will appear when `ipVisitsPerDay` has data.</p>
       <p id="summaryIpChartLegend" class="chart-legend">Legend: bars = IP, x-axis = IP address, value label = total visits.</p>
+      <p class="chart-title">Page URL visits</p>
+      <svg id="summaryPageUrlChart" class="summary-mini-chart" viewBox="0 0 760 190" preserveAspectRatio="none" aria-label="Analytics page URL chart"></svg>
+      <p id="summaryPageUrlChartEmpty" class="chart-empty">Page URL chart will appear when `visitsByPageUrl` has data.</p>
+      <p id="summaryPageUrlChartLegend" class="chart-legend">Legend: bars = page URL, value label = visit count (top 10 shown).</p>
     </div>
     <div id="resSummary" class="response empty">Response here.</div>
   </section>
@@ -265,6 +276,7 @@
       const apiKeyInput = document.getElementById('apiKey');
       const summaryIpChartMode = document.getElementById('summaryIpChartMode');
       let latestSummaryData = null;
+      let autoListServicesDone = false;
       if (!baseUrlInput.value) {
         baseUrlInput.value = location.origin + '/api/v1';
       }
@@ -279,6 +291,35 @@
           localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value);
         } catch (_) {}
       });
+
+      function tryAutoListServices() {
+        if (autoListServicesDone || !apiKeyInput.value.trim()) return;
+        autoListServicesDone = true;
+        listServices();
+      }
+
+      apiKeyInput.addEventListener('animationstart', function (e) {
+        if (e.animationName === 'profat-autofill-start') {
+          tryAutoListServices();
+        }
+      });
+
+      // Browsers may autofill without input/change events (Firefox, etc.)
+      (function watchApiKeyAutofill() {
+        let last = apiKeyInput.value;
+        const deadline = Date.now() + 2500;
+        function tick() {
+          if (autoListServicesDone) return;
+          const cur = apiKeyInput.value;
+          if (cur.trim() && cur !== last) {
+            tryAutoListServices();
+            return;
+          }
+          last = cur;
+          if (Date.now() < deadline) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      })();
 
       function baseUrl() {
         return baseUrlInput.value.replace(/\/$/, '');
@@ -316,6 +357,13 @@
         ipSvg.innerHTML = '';
         ipEmpty.textContent = 'IP chart will appear when `ipVisitsPerDay` has data.';
         ipLegend.textContent = 'Legend: bars = IP, x-axis = IP address, value label = total visits.';
+
+        const pageUrlSvg = document.getElementById('summaryPageUrlChart');
+        const pageUrlEmpty = document.getElementById('summaryPageUrlChartEmpty');
+        const pageUrlLegend = document.getElementById('summaryPageUrlChartLegend');
+        pageUrlSvg.innerHTML = '';
+        pageUrlEmpty.textContent = 'Page URL chart will appear when `visitsByPageUrl` has data.';
+        pageUrlLegend.textContent = 'Legend: bars = page URL, value label = visit count (top 10 shown).';
       }
 
       function renderSummaryChart(summary) {
@@ -387,6 +435,107 @@
           : 'Hourly data missing; showing daily visits instead.';
 
         renderSummaryIpChart(summary);
+        renderSummaryPageUrlChart(summary);
+      }
+
+      function truncateLabel(label, maxLen) {
+        const text = String(label || '');
+        return text.length <= maxLen ? text : text.slice(0, maxLen - 1) + '…';
+      }
+
+      function stripProxyFromPageUrl(url) {
+        const s = String(url || '');
+        if (s.startsWith('/proxy/')) return s.slice('/proxy'.length) || '/';
+        if (s === '/proxy') return '/';
+        return s;
+      }
+
+      function renderMiniBarChart(svg, bars, options) {
+        const width = 760;
+        const height = 190;
+        const padding = { top: 10, right: 10, bottom: 46, left: 44 };
+        const plotW = width - padding.left - padding.right;
+        const plotH = height - padding.top - padding.bottom;
+        const maxY = Math.max(...bars.map(b => b.count), 1);
+        const slotW = plotW / bars.length;
+        const barW = Math.max(14, slotW * 0.62);
+        const axisY = height - padding.bottom;
+        const labelYLow = axisY + 14;
+        const labelYHigh = axisY + 28;
+        const ns = 'http://www.w3.org/2000/svg';
+
+        svg.innerHTML = '';
+        function add(tag, attrs, text) {
+          const el = document.createElementNS(ns, tag);
+          Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, String(v)));
+          if (text !== undefined) el.textContent = text;
+          svg.appendChild(el);
+          return el;
+        }
+
+        add('line', { x1: padding.left, y1: axisY, x2: width - padding.right, y2: axisY, stroke: '#2d3a4d', 'stroke-width': 1 });
+
+        bars.forEach((bar, i) => {
+          const x = padding.left + i * slotW + (slotW - barW) / 2;
+          const h = (bar.count / maxY) * plotH;
+          const y = padding.top + (plotH - h);
+          let primaryLabelY;
+          let secondaryLabelY;
+          if (bar.subLabel) {
+            primaryLabelY = labelYLow;
+            secondaryLabelY = labelYHigh;
+          } else {
+            const staggerHigh = i % 2 === 1;
+            primaryLabelY = staggerHigh ? labelYHigh : labelYLow;
+          }
+          add('rect', { x, y, width: barW, height: h, fill: options.fill || '#3fb950', rx: 3, ry: 3 });
+          add('text', { x: x + barW / 2, y: y - 4, 'text-anchor': 'middle', fill: '#8b949e', 'font-size': 10 }, String(bar.count));
+          add('text', {
+            x: x + barW / 2,
+            y: primaryLabelY,
+            'text-anchor': 'middle',
+            fill: '#8b949e',
+            'font-size': 10
+          }, truncateLabel(bar.label, options.labelMaxLen || 24));
+          if (bar.subLabel) {
+            add('text', {
+              x: x + barW / 2,
+              y: secondaryLabelY,
+              'text-anchor': 'middle',
+              fill: '#8b949e',
+              'font-size': 10
+            }, truncateLabel(bar.subLabel, options.labelMaxLen || 24));
+          }
+        });
+      }
+
+      function renderSummaryPageUrlChart(summary) {
+        const svg = document.getElementById('summaryPageUrlChart');
+        const empty = document.getElementById('summaryPageUrlChartEmpty');
+        const legend = document.getElementById('summaryPageUrlChartLegend');
+        const rows = Array.isArray(summary.visitsByPageUrl) ? summary.visitsByPageUrl : [];
+        const merged = new Map();
+        rows.forEach(item => {
+          const pageUrl = stripProxyFromPageUrl(String(item.pageUrl || '').trim());
+          const count = Number(item.count || 0);
+          if (!pageUrl || count <= 0) return;
+          merged.set(pageUrl, (merged.get(pageUrl) || 0) + count);
+        });
+        const bars = Array.from(merged.entries())
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+          .slice(0, 10);
+
+        if (!bars.length) {
+          svg.innerHTML = '';
+          empty.textContent = 'No page URL visits found for selected range.';
+          legend.textContent = 'Legend: bars = page URL, value label = visit count (top 10 shown).';
+          return;
+        }
+
+        renderMiniBarChart(svg, bars, { fill: '#58a6ff', labelMaxLen: 28 });
+        empty.textContent = 'Top page URLs by visit count.';
+        legend.textContent = 'Legend: bars = page URL, value label = visit count (top 10 shown).';
       }
 
       function renderSummaryIpChart(summary) {
@@ -434,49 +583,18 @@
             ? 'No per-day IP data met the >10/day threshold in this range.'
             : 'No IPs met the >10/day threshold in this range.';
           legend.textContent = mode === 'perDay'
-            ? 'Legend: bars = date, top label = visits, bottom labels = date then top IP for that day.'
+            ? 'Legend: bars = date, top label = visits, bottom labels = date (upper) then IP (lower).'
             : 'Legend: bars = IP, x-axis = IP address, value label = total visits.';
           return;
         }
 
-        const width = 760;
-        const height = 160;
-        const padding = { top: 10, right: 10, bottom: 30, left: 44 };
-        const plotW = width - padding.left - padding.right;
-        const plotH = height - padding.top - padding.bottom;
-        const maxY = Math.max(...bars.map(b => b.count), 1);
-        const slotW = plotW / bars.length;
-        const barW = Math.max(14, slotW * 0.62);
-        const ns = 'http://www.w3.org/2000/svg';
-
-        svg.innerHTML = '';
-        function add(tag, attrs, text) {
-          const el = document.createElementNS(ns, tag);
-          Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, String(v)));
-          if (text !== undefined) el.textContent = text;
-          svg.appendChild(el);
-          return el;
-        }
-
-        add('line', { x1: padding.left, y1: height - padding.bottom, x2: width - padding.right, y2: height - padding.bottom, stroke: '#2d3a4d', 'stroke-width': 1 });
-
-        bars.forEach((bar, i) => {
-          const x = padding.left + i * slotW + (slotW - barW) / 2;
-          const h = (bar.count / maxY) * plotH;
-          const y = padding.top + (plotH - h);
-          add('rect', { x, y, width: barW, height: h, fill: '#3fb950', rx: 3, ry: 3 });
-          add('text', { x: x + barW / 2, y: y - 4, 'text-anchor': 'middle', fill: '#8b949e', 'font-size': 10 }, String(bar.count));
-          add('text', { x: x + barW / 2, y: height - 18, 'text-anchor': 'middle', fill: '#8b949e', 'font-size': 10 }, bar.label);
-          if (bar.subLabel) {
-            add('text', { x: x + barW / 2, y: height - 6, 'text-anchor': 'middle', fill: '#8b949e', 'font-size': 10 }, bar.subLabel);
-          }
-        });
+        renderMiniBarChart(svg, bars, { fill: '#3fb950', labelMaxLen: 20 });
 
         empty.textContent = mode === 'perDay'
           ? 'Showing top thresholded IP for each day.'
           : 'Top thresholded IPs aggregated across selected dates.';
         legend.textContent = mode === 'perDay'
-          ? 'Legend: bars = date, top label = visits, bottom labels = date then top IP for that day.'
+          ? 'Legend: bars = date, top label = visits, bottom labels = date (upper) then IP (lower).'
           : 'Legend: bars = IP, x-axis = IP address, value label = total visits.';
       }
 
@@ -512,8 +630,7 @@
         });
       }
 
-      document.getElementById('btnListServices').addEventListener('click', async () => {
-        const resEl = document.getElementById('resListServices');
+      async function listServices() {
         clearResponse('resListServices');
         const r = await request('GET', '/services');
         if (r.ok) {
@@ -522,7 +639,11 @@
         } else {
           setResponse('resListServices', r.data, true);
         }
-      });
+      }
+
+      document.getElementById('btnListServices').addEventListener('click', listServices);
+
+      tryAutoListServices();
 
       document.getElementById('btnCreateService').addEventListener('click', async () => {
         const name = document.getElementById('serviceName').value.trim();

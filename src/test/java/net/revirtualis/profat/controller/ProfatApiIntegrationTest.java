@@ -203,6 +203,9 @@ class ProfatApiIntegrationTest {
 				.andExpect(jsonPath("$.ipVisitsPerDay[0].ips[0].count").value(11))
 				.andExpect(jsonPath("$.ipVisitsPerDay[0].ips[*].ip", not(hasItem("203.0.113.11"))))
 				.andExpect(jsonPath("$.pageVisitsByIp").doesNotExist())
+				.andExpect(jsonPath("$.visitsByPageUrl").isArray())
+				.andExpect(jsonPath("$.visitsByPageUrl[0].pageUrl").value("/home"))
+				.andExpect(jsonPath("$.visitsByPageUrl[0].count").value(21))
 				.andExpect(jsonPath("$.pageLoadsByDevice.mobile").exists())
 				.andExpect(jsonPath("$.pageLoadsByDevice.desktop").exists())
 				.andExpect(jsonPath("$.visitsPerDay").isArray());

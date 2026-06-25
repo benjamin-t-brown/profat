@@ -15,6 +15,7 @@
 profat.staticSites[0].route=revirtualis-net
 profat.staticSites[0].staticFiles=C:\\progs\\revirtualis-net\\dist
 profat.staticSites[0].analyticsName=page_visit
-profat.staticSites[0].serviceId=76465e97-6c9d-4364-9110-0b39637cbeaf
+# service-id must match a row in the SQLite DB (see profat-services.json for reference UUIDs).
+profat.staticSites[0].serviceId=8008a1b0-27bb-4df4-ac8b-c12f4c6b8e40
 # Optional: also serve this site at http://127.0.0.1:9876/ (must differ from server.port; binds to loopback only).
 # profat.staticSites[0].localhostPort=9876

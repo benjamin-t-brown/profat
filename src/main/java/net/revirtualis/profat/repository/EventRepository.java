@@ -44,4 +44,7 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
 	@Query("SELECT COUNT(e) FROM Event e WHERE e.serviceId = :serviceId AND e.action IN :actions AND (e.isMobile = false OR e.isMobile IS NULL) AND e.createdAt >= :fromDate AND e.createdAt <= :toDate")
 	long countPageVisitsDesktop(@Param("serviceId") UUID serviceId, @Param("actions") List<String> actions, @Param("fromDate") String fromDate, @Param("toDate") String toDate);
 
+	@Query("SELECT e.pageUrl, COUNT(e) FROM Event e WHERE e.serviceId = :serviceId AND e.action IN :actions AND e.createdAt >= :fromDate AND e.createdAt <= :toDate AND e.pageUrl IS NOT NULL AND e.pageUrl <> '' GROUP BY e.pageUrl ORDER BY COUNT(e) DESC, e.pageUrl ASC")
+	List<Object[]> countPageVisitsByPageUrl(@Param("serviceId") UUID serviceId, @Param("actions") List<String> actions, @Param("fromDate") String fromDate, @Param("toDate") String toDate);
+
 }

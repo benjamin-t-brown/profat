@@ -78,6 +78,23 @@ public class AnalyticsService {
 					return map;
 				})
 				.collect(Collectors.toList());
+		List<Object[]> visitsByPageUrlRows = eventRepository.countPageVisitsByPageUrl(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
+		Map<String, Long> visitsByPageUrlMerged = new LinkedHashMap<>();
+		for (Object[] row : visitsByPageUrlRows) {
+			String pageUrl = displayPageUrl((String) row[0]);
+			long count = ((Number) row[1]).longValue();
+			visitsByPageUrlMerged.merge(pageUrl, count, Long::sum);
+		}
+		List<Map<String, Object>> visitsByPageUrl = visitsByPageUrlMerged.entrySet().stream()
+				.sorted(Map.Entry.<String, Long>comparingByValue().reversed()
+						.thenComparing(Map.Entry.comparingByKey()))
+				.map(entry -> {
+					Map<String, Object> map = new LinkedHashMap<>();
+					map.put("pageUrl", entry.getKey());
+					map.put("count", entry.getValue());
+					return map;
+				})
+				.collect(Collectors.toList());
 		long totalPageLoads = eventRepository.countPageVisits(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
 		long mobile = eventRepository.countPageVisitsMobile(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
 		long desktop = eventRepository.countPageVisitsDesktop(serviceId, pageVisitActionCatalog.listActions(), fromStr, toStr);
@@ -91,6 +108,7 @@ public class AnalyticsService {
 		summary.setVisitsPerHour(visitsPerHour);
 		summary.setUniqueCountries(uniqueCountries);
 		summary.setIpVisitsPerDay(ipVisitsPerDay);
+		summary.setVisitsByPageUrl(visitsByPageUrl);
 		summary.setTotalPageLoads(totalPageLoads);
 		summary.setPageLoadsByDevice(pageLoadsByDevice);
 		return summary;
@@ -102,5 +120,19 @@ public class AnalyticsService {
 			base = base.substring(0, 13);
 		}
 		return base + ":00:00Z";
+	}
+
+	/** Drops the {@code /proxy} mount prefix so summaries show site paths only. */
+	static String displayPageUrl(String pageUrl) {
+		if (pageUrl == null || pageUrl.isBlank()) {
+			return pageUrl;
+		}
+		if (pageUrl.startsWith("/proxy/")) {
+			return pageUrl.substring("/proxy".length());
+		}
+		if ("/proxy".equals(pageUrl)) {
+			return "/";
+		}
+		return pageUrl;
 	}
 }

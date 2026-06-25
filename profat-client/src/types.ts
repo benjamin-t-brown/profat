@@ -78,6 +78,8 @@ export interface AnalyticsSummary {
   uniqueCountries: string[];
   /** Per-day IP counts, filtered to IPs with more than 10 visits for that day. */
   ipVisitsPerDay: Array<{ date: string; ips: Array<{ ip: string; count: number }> }>;
+  /** Page visit counts grouped by pageUrl, sorted by count descending. */
+  visitsByPageUrl: Array<{ pageUrl: string; count: number }>;
   totalPageLoads: number;
   pageLoadsByDevice: { mobile: number; desktop: number };
 }
